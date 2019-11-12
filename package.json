@@ -1,6 +1,6 @@
 {
   "name": "node-samsung-aircon",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "node-samsung-aircon",
   "main": "index.js",
   "module": "main.js",
@@ -10,6 +10,10 @@
     "prepublishOnly": "npm run generate-jsdoc",
     "postpublish": "rm -rf types",
     "generate-jsdoc": "tsc -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nekman/node-samsung-aircon.git"
   },
   "types": "types/main.d.ts",
   "author": "@nekman",
