@@ -97,6 +97,7 @@ export default class SamsungDiscovery {
       this.logger.error('ERROR during discover', e);
       if (this.stopped) {
         // Ignore the error, due to stopped.
+        return;
       }
       throw e;
     }
