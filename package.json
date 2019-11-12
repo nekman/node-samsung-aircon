@@ -1,12 +1,14 @@
 {
   "name": "node-samsung-aircon",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "node-samsung-aircon",
   "main": "index.js",
   "module": "main.js",
   "scripts": {
     "test": "node -r esm test.js",
     "eslint": "eslint -c .eslintrc ./index.js ./src",
+    "prepublishOnly": "npm run generate-jsdoc",
+    "postpublish": "rm -rf types",
     "generate-jsdoc": "tsc -p tsconfig.json"
   },
   "types": "types/main.d.ts",

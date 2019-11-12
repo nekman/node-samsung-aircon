@@ -1,16 +1,19 @@
 import tls from 'tls';
+import { EventEmitter } from 'events';
 // @ts-ignore
 import carrier from 'carrier';
 import {
   sleep, timeout, readCertificateFile, defaultLogger
 } from './utils';
 
-export default class SamsungDevice {
+
+export default class SamsungDevice extends EventEmitter {
   /**
    * @param {{ ip: string, mac: string, info: any }} ssdpData
    * @param {typeof defaultLogger?} logger
    */
   constructor(ssdpData, logger = defaultLogger) {
+    super();
     this.logger = logger;
 
     this.ip = ssdpData.ip;
@@ -90,6 +93,8 @@ export default class SamsungDevice {
       // eslint-disable-next-line no-console
       this.logger.debug('line', { line });
 
+      this.emit('read', line);
+
       if (line === 'DRC-1.00') {
         return this.state;
       }
@@ -112,15 +117,16 @@ export default class SamsungDevice {
         });
       }
 
-      /* examine the line that contains the result */
       if (line === '<?xml version="1.0" encoding="utf-8" ?><Response Status="Fail" Type="Authenticate" ErrorCode="301" />') {
         this.logger.debug('Failed authentication');
-        return this.updateState({
+        this.updateState({
           pendingStatus: false,
           loginSuccess: false,
           waiting: false,
           message: 'Failed authentication'
         });
+
+        throw new Error('Failed authentication');
       }
 
       if (line.match(/<Update Type="GetToken" Status="Completed" Token="/)) {
@@ -253,6 +259,7 @@ export default class SamsungDevice {
   updateState(newState) {
     this.state = { ...this.state, ...newState };
 
+    this.emit('state', this.state);
     return this.state;
   }
 

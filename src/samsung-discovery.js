@@ -53,7 +53,7 @@ export default class SamsungDiscovery {
    * @param {typeof defaultLogger?} logger
    * @return {SamsungDiscovery}
   */
-  setLogger(logger = defaultLogger) {
+  withLogger(logger = defaultLogger) {
     this.logger = logger;
 
     return this;
