@@ -1,0 +1,7 @@
+{
+  "noEmit": false,
+  "declaration": true,
+  "allowJs": true,
+  "checkJs": true,
+  "emitDeclarationOnly": true
+}

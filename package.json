@@ -1,10 +1,10 @@
 {
   "name": "node-samsung-aircon",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node -r esm index.js",
+    "test": "node -r esm test.js",
     "eslint": "eslint -c .eslintrc ./index.js ./src"
   },
   "author": "",
@@ -19,6 +19,7 @@
     "@types/node": "12.12.7",
     "eslint": "6.6.0",
     "eslint-config-airbnb-base": "14.0.0",
-    "eslint-plugin-import": "2.18.2"
+    "eslint-plugin-import": "2.18.2",
+    "typescript": "3.7.2"
   }
 }

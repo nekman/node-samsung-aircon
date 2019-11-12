@@ -1,3 +1,7 @@
+import fs from 'fs';
+import { promisify } from 'util';
+
+const asyncReadFile = promisify(fs.readFile);
 
 /**
  *
@@ -9,19 +13,38 @@ export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
  *
  * @param {number} ms
  */
-export const timeout = ms => sleep(ms).then(() => Promise.reject(new Error('Timeout!')));
+export async function timeout(ms, extraMessage = '') {
+  await sleep(ms);
+  return Promise.reject(new Error(`Timeout! ${extraMessage}`));
+}
+
+const fileCache = {};
 
 /**
-*
-* @param {string} head
-* @param {{[x: string]: string}} vars
-*/
-export function getSSDPHeader(head, vars) {
- let ret = `${head} * HTTP/1.1\r\n`;
+ *
+ * @param {{[x: string]: any}?} cache
+ */
+export async function readCertificateFile(cache = fileCache) {
+  if (!cache.certificateFile) {
+    cache.certificateFile = await asyncReadFile(`${__dirname}/ac14k_m.pfx`);
+  }
 
- Object.entries(vars).forEach(([key, value]) => {
-   ret += `${key}: ${value}\r\n`;
- });
-
- return `${ret}\r\n`;
+  return cache.certificateFile;
 }
+
+
+/**
+ * @param {...any?} args
+ */
+// eslint-disable-next-line no-unused-vars
+function noopLogger(...args) {}
+
+export const defaultLogger = {
+  time: noopLogger,
+  timeEnd: noopLogger,
+  warn: noopLogger,
+  info: noopLogger,
+  debug: noopLogger,
+  log: noopLogger,
+  error: noopLogger
+};

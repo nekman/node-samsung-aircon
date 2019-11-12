@@ -1,26 +1,44 @@
 import tls from 'tls';
 // @ts-ignore
 import carrier from 'carrier';
-import fs from 'fs';
-import { promisify } from 'util';
-import { sleep, timeout } from './utils';
-
-const asyncReadFile = promisify(fs.readFile);
-
+import {
+  sleep, timeout, readCertificateFile, defaultLogger
+} from './utils';
 
 export default class SamsungDevice {
   /**
-   * @param {{ token: string, ip: string, mac: string, info: any }} ssdpData
+   * @param {{ ip: string, mac: string, info: any }} ssdpData
+   * @param {typeof defaultLogger?} logger
    */
-  constructor(ssdpData) {
-    this.token = ssdpData.token;
+  constructor(ssdpData, logger = defaultLogger) {
+    this.logger = logger;
+
     this.ip = ssdpData.ip;
     this.mac = ssdpData.mac;
     this.info = ssdpData.info;
 
     /** @type {tls.TLSSocket} */
     this.socket = null;
-    this.state = {};
+
+    /** @type {string} */
+    this.token = null;
+
+    this.state = {
+      pendingStatus: false,
+      loginSuccess: false,
+      message: ''
+    };
+  }
+
+  /**
+   *
+   * @param {string} token
+   * @param {number?} maxWaitTime
+   */
+  async login(token, maxWaitTime = 10000) {
+    this.token = token;
+
+    return this.connect(maxWaitTime);
   }
 
   /**
@@ -28,7 +46,9 @@ export default class SamsungDevice {
    * @return {Promise<void>}
    */
   async connect(maxWaitTime = 10000) {
-    const pfx = await asyncReadFile('./ac14k_m.pfx');
+    const pfx = await readCertificateFile();
+
+    this.logger.debug('connect');
 
     const promise = new Promise((resolve, reject) => {
       // @ts-ignore
@@ -37,52 +57,101 @@ export default class SamsungDevice {
         port: 2878,
         host: this.ip,
         rejectUnauthorized: false,
-        // https://github.com/CloCkWeRX/node-samsung-airconditioner/issues/7
-        // Error: 140735892054848:error:14082174:SSL routines:ssl3_check_cert_and_algorithm:dh key too small:../deps/openssl/openssl/ssl/s3_clnt.c:3641:
         secureContext: tls.createSecureContext({  ciphers: 'HIGH:!DH:!aNULL' })
       }, err => {
         if (err) {
+          this.logger.error('ERROR', err);
           return reject(err);
         }
-        resolve();
         this.consumeSocketEvents();
+        resolve();
       });
 
-      this.socket.on('end', () => {
+      this.socket.on('end', (err) => {
+        this.logger.error('Socket unexpected hang up', err);
         reject(new Error('Unexpected hang up'));
       });
 
       this.socket.on('error', err => {
+        this.logger.error('Socket error', err);
         reject(new Error(`Socket error! ${err.message}`));
       });
     });
 
-    await Promise.race([timeout(maxWaitTime), promise]);
+    await Promise.race([timeout(maxWaitTime, 'when trying to connect'), promise]);
   }
 
   consumeSocketEvents() {
     this.socket.setEncoding('utf8');
+    this.logger.debug('Consume socket events');
+
 
     carrier.carry(this.socket, (line) => {
-      // console.log('LINE', { line });
+      // eslint-disable-next-line no-console
+      this.logger.debug('line', { line });
 
       if (line === 'DRC-1.00') {
-        return;
+        return this.state;
+      }
+
+      if (this.token && line === '<?xml version="1.0" encoding="utf-8" ?><Update Type="InvalidateAccount"/>') {
+        this.send(`<Request Type="AuthToken"><User Token="${this.token}" /></Request>`);
+        return this.state;
       }
 
       if (line === '<?xml version="1.0" encoding="utf-8" ?><Update Type="InvalidateAccount"/>') {
-        return this.send(`<Request Type="AuthToken"><User Token="${this.token}" /></Request>`);
+        this.send('<Request Type="GetToken" />');
+        return this.state;
+      }
+
+      if (line === '<?xml version="1.0" encoding="utf-8" ?><Response Type="GetToken" Status="Ready"/>') {
+        this.logger.debug('Please power on the device within the next 30 seconds');
+        return this.updateState({
+          waiting: true,
+          message: 'Please power on the device within the next 30 seconds'
+        });
+      }
+
+      /* examine the line that contains the result */
+      if (line === '<?xml version="1.0" encoding="utf-8" ?><Response Status="Fail" Type="Authenticate" ErrorCode="301" />') {
+        this.logger.debug('Failed authentication');
+        return this.updateState({
+          pendingStatus: false,
+          loginSuccess: false,
+          waiting: false,
+          message: 'Failed authentication'
+        });
+      }
+
+      if (line.match(/<Update Type="GetToken" Status="Completed" Token="/)) {
+        const matches = line.match(/Token="(.*)"/);
+        if (matches) {
+          const [, token] = matches[1];
+          this.token = token;
+
+          return this.updateState({
+            pendingStatus: false,
+            waiting: false,
+            loginSuccess: true,
+            message: 'Got token'
+          });
+        }
       }
 
       if (line.match(/Response Type="AuthToken" Status="Okay"/)) {
-        this.updateState({ loginSuccess: true });
+        return this.updateState({
+          loginSuccess: true,
+          waiting: false,
+          pendingStatus: false,
+          message: 'Successful login'
+        });
       }
 
       // Other events
       if (line.match(/Update Type="Status"/)) {
         const matches = line.match(/Attr ID="(.*)" Value="(.*)"/);
         if (matches) {
-          this.updateState({ [matches[1]]: matches[2] });
+          return this.updateState({ [matches[1]]: matches[2] });
         }
       }
 
@@ -97,43 +166,21 @@ export default class SamsungDevice {
           }
         });
 
-        this.updateState(newState);
-        this.pendingStatus = false;
+        return this.updateState({
+          pendingStatus: false,
+          message: '',
+          ...newState
+        });
       }
     });
   }
 
-  updateState(newState) {
-    this.state = { ...this.state, ...newState };
-
-    return this.state;
-  }
-
-  async waitOnConnected() {
-    if (!this.socket) {
-      throw new Error('not logged in');
-    }
-
-    if (!this.state.loginSuccess) {
-      await sleep(100);
-      return this.waitOnConnected();
-    }
-  }
-
-  async waitOnStatus() {
-    if (!this.socket) {
-      throw new Error('not logged in');
-    }
-
-    if (this.pendingStatus) {
-      await sleep(100);
-      return this.waitOnStatus();
-    }
-  }
-
-
+  /**
+   * Get the current status.
+   * @return {Promise<{ [x: string]: any }>}
+   */
   async fetchStatus() {
-    this.pendingStatus = true;
+    this.updateState({ pendingStatus: true });
 
     await this.waitOnConnected();
 
@@ -145,7 +192,8 @@ export default class SamsungDevice {
   }
 
   /**
-   *
+   * Send a control command to the device.
+   * E.g ```deviceControl('AC_FUN_POWER', 'Off');```
    * @param {string} key
    * @param {string} value
    */
@@ -159,14 +207,80 @@ export default class SamsungDevice {
     );
   }
 
+  /**
+   * Set temperature.
+   *
+   * @param {string} temp
+   */
+  async setTemp(temp) {
+    return this.deviceControl('AC_FUN_TEMPSET', temp);
+  }
+
 
   /**
+   * Sets the wind level.
    *
+   * @param {'High' | 'Low' | 'Mid'} level
+   */
+  async setWindLevel(level = 'High') {
+    return this.deviceControl('AC_FUN_WINDLEVEL', level);
+  }
+
+    /**
+   *
+   * @param {'Dry' | 'Wind' | 'Cool' | 'Heat'} mode
+   */
+  async setOpMode(mode = 'Heat') {
+    return this.deviceControl('AC_FUN_OPMODE', mode);
+  }
+
+  /**
+   * @private
    * @param {string} xml
    */
   send(xml) {
+    // eslint-disable-next-line no-console
+    this.logger.debug('SEND:', xml);
     this.socket.write(`${xml}\r\n`);
 
     return this;
+  }
+
+  /**
+   * @private
+   * @param {{[x: string]: any}} newState
+   */
+  updateState(newState) {
+    this.state = { ...this.state, ...newState };
+
+    return this.state;
+  }
+
+  /**
+   * @private
+   */
+  async waitOnConnected() {
+    if (!this.socket) {
+      throw new Error('not logged in');
+    }
+
+    if (!this.state.loginSuccess) {
+      await sleep(100);
+      return this.waitOnConnected();
+    }
+  }
+
+  /**
+   * @private
+   */
+  async waitOnStatus() {
+    if (!this.socket) {
+      throw new Error('not logged in');
+    }
+
+    if (this.state.pendingStatus) {
+      await sleep(100);
+      return this.waitOnStatus();
+    }
   }
 }
