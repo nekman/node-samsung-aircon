@@ -1,7 +1,19 @@
 {
-  "noEmit": false,
-  "declaration": true,
-  "allowJs": true,
-  "checkJs": true,
-  "emitDeclarationOnly": true
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "lib": ["es2017", "dom"],
+    "noEmit": false,
+    "declaration": true,
+    "allowJs": true,
+    "checkJs": true,
+    "emitDeclarationOnly": true,    
+    "strict": false,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "esModuleInterop": true,
+    "outDir": "types"
+  },
+  "include": ["main.js", "src/"]
 }

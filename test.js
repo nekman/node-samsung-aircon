@@ -21,7 +21,7 @@ async function main(env = process.env) {
 
   console.log('Current status', status);
 
-  // await device.setTemp('23');
+  await device.setTemp('23');
   await sleep(2000);
 
   const newStatus = await device.fetchStatus();

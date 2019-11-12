@@ -1,4 +1,4 @@
-# samsung-aircon
+# node-samsung-aircon
 
 An attempt to refactor the  [node-samsung-airconditioner](https://github.com/zyrorl/node-samsung-airconditioner) library to use Promises.
 Of course, this is not a bullet proof solution, because we connect to a socket so 

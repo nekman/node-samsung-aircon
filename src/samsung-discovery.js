@@ -64,6 +64,8 @@ export default class SamsungDiscovery {
    */
   stop() {
     this.stopped = true;
+
+    // @ts-ignore
     this.ssdp.stop();
   }
 
@@ -110,6 +112,7 @@ export default class SamsungDiscovery {
     const socket = this.ssdp.sockets[ipAddress];
 
     return new Promise(resolve => {
+      // @ts-ignore
       this.ssdp.on('advertise-alive', (deviceInfo, deviceAddressInfo) => {
         this.logger.debug('Got a device:', deviceInfo);
 
@@ -135,6 +138,7 @@ export default class SamsungDiscovery {
         });
       });
 
+      // @ts-ignore
       this.ssdp.start();
     });
   }
