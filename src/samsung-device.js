@@ -148,7 +148,7 @@ export default class SamsungDevice extends EventEmitter {
         return this.updateState({
           loginSuccess: true,
           waiting: false,
-          pendingStatus: false,
+          pendingStatus: true,
           message: 'Successful login'
         });
       }
