@@ -18,19 +18,13 @@ async function main() {
   // Found device(s), we can now stop to discover more
   discovery.stop();
 
-  console.log('Found a aircon device', aircon);
+  // If a token is not supplied, just follow the
+  // instuctions when prompted to power on the AC
+  // and write down the token for the future.
+  await aircon.login(process.env.TOKEN);
 
-  try {
-    // If a token is not supplied, just follow the
-    // instuctions when prompted to power on the AC
-    // and write down the token for the future.
-    await aircon.login(process.env.TOKEN);
-  } catch (e) {
-    console.error('ERROR when trying to login', err);
-  }
- 
   const status = await aircon.fetchStatus();
-  console.log('Status', status);
+  console.log({ status });
 }
  
 main()
