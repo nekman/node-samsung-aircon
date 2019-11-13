@@ -1,6 +1,6 @@
 {
   "name": "node-samsung-aircon",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "node-samsung-aircon",
   "main": "index.js",
   "module": "main.js",

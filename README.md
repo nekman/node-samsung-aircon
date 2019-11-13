@@ -92,7 +92,7 @@ interface SamsungDiscovery {
 ```
 
 ```typescript
-interface SamsungDevice {
+interface SamsungAircon {
   connect(maxWaitTime?: number): Promise<void>;
   login(token: string, maxWaitTime?: number): Promise<void>;
   setTemp(temp: string): Promise<void>;
@@ -100,6 +100,6 @@ interface SamsungDevice {
   setOpMode(mode: 'Dry' | 'Wind' | 'Cool' | 'Heat'): Promise<void>;
   deviceControl(key: string, value: string): Promise<void>;
 
-  on(eventName: 'read' | 'state', (msg: any) => void): SamsungDevice;
+  on(eventName: 'read' | 'state', (msg: any) => void): SamsungAircon;
 }
 ```

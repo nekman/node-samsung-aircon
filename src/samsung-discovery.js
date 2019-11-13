@@ -1,5 +1,5 @@
 import os from 'os';
-import SamsungDevice from './samsung-device';
+import SamsungAircon from './samsung-aircon';
 import { timeout, defaultLogger } from './utils';
 import CustomSSDP from './custom-ssdp';
 
@@ -72,7 +72,7 @@ export default class SamsungDiscovery {
   /**
    *
    * @param {number?} maxWaitTime - max waiting time in ms
-   * @return {Promise<SamsungDevice[]>}
+   * @return {Promise<SamsungAircon[]>}
    */
   async discover(maxWaitTime = 10000) {
     this.stopped = false;
@@ -120,7 +120,7 @@ export default class SamsungDiscovery {
         if (deviceInfo.MODELCODE === 'SAMSUNG_DEVICE') {
           this.logger.debug('Found a samsung device.');
 
-          resolve(new SamsungDevice({
+          resolve(new SamsungAircon({
             mac: deviceInfo.MAC_ADDR,
             ip: deviceAddressInfo.address,
             info: deviceInfo

@@ -7,7 +7,7 @@ import {
 } from './utils';
 
 
-export default class SamsungDevice extends EventEmitter {
+export default class SamsungAircon extends EventEmitter {
   /**
    * @param {{ ip: string, mac: string, info: any }} ssdpData
    * @param {typeof defaultLogger?} logger
